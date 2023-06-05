@@ -1,7 +1,11 @@
 [package]
 name = "mms-rs"
-version = "0.1.0"
+description = "A port of the mms-cpp library for the micromouse simulator mms"
+repository = "https://github.com/hardliner66/mms-rs"
+version = "1.0.0"
 edition = "2021"
+license-file = "LICENSE"
+readme = "README.md"
 
 [[example]]
 name = "minimal-bot"
