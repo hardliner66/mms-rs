@@ -1,20 +1,16 @@
-use std::io::{stdin, stdout};
-
-use mms_rs::MmsApi;
+use mms_rs::MmsApi as Mouse;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("Running...");
-    let mut api = MmsApi::new(stdin().lock(), stdout().lock());
-
-    api.set_color(0, 0, &mms_rs::CellColor::DarkGreen)?;
-    api.set_text(0, 0, "abc")?;
+    Mouse::set_color(0, 0, &mms_rs::CellColor::DarkGreen)?;
+    Mouse::set_text(0, 0, "abc")?;
     loop {
-        if !api.wall_left()? {
-            api.turn_left()?;
+        if !Mouse::wall_left()? {
+            Mouse::turn_left()?;
         }
-        while api.wall_front()? {
-            api.turn_right()?;
+        while Mouse::wall_front()? {
+            Mouse::turn_right()?;
         }
-        _ = api.move_forward(None);
+        Mouse::move_forward(None)?;
     }
 }

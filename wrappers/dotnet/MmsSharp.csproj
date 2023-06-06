@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>MmsSharp</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(ProjectDir)\..\resources\**" Exclude="$(ProjectDir)\..\resources\.gitkeep" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+   <ItemGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|Win32' ">
+     <Content Include="../../target/debug/libmms_rs.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+ </ItemGroup>   
+ <ItemGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|Win32' ">
+     <Content Include="../../target/debug/libmms_rs.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+     <Content Include="../../target/debug/libmms_rs.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+     <Content Include="../../target/debug/libmms_rs.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

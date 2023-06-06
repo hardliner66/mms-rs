@@ -1,0 +1,12 @@
+/home/steve/projects/private/mms-rs/wrappers/dotnet/bin/Debug/net7.0/MmsSharp.deps.json
+/home/steve/projects/private/mms-rs/wrappers/dotnet/bin/Debug/net7.0/MmsSharp.dll
+/home/steve/projects/private/mms-rs/wrappers/dotnet/bin/Debug/net7.0/MmsSharp.pdb
+/home/steve/projects/private/mms-rs/wrappers/dotnet/obj/Debug/net7.0/MmsSharp.csproj.AssemblyReference.cache
+/home/steve/projects/private/mms-rs/wrappers/dotnet/obj/Debug/net7.0/MmsSharp.GeneratedMSBuildEditorConfig.editorconfig
+/home/steve/projects/private/mms-rs/wrappers/dotnet/obj/Debug/net7.0/MmsSharp.AssemblyInfoInputs.cache
+/home/steve/projects/private/mms-rs/wrappers/dotnet/obj/Debug/net7.0/MmsSharp.AssemblyInfo.cs
+/home/steve/projects/private/mms-rs/wrappers/dotnet/obj/Debug/net7.0/MmsSharp.csproj.CoreCompileInputs.cache
+/home/steve/projects/private/mms-rs/wrappers/dotnet/obj/Debug/net7.0/MmsSharp.dll
+/home/steve/projects/private/mms-rs/wrappers/dotnet/obj/Debug/net7.0/refint/MmsSharp.dll
+/home/steve/projects/private/mms-rs/wrappers/dotnet/obj/Debug/net7.0/MmsSharp.pdb
+/home/steve/projects/private/mms-rs/wrappers/dotnet/obj/Debug/net7.0/ref/MmsSharp.dll

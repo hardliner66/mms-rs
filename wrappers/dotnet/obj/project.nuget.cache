@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "9MbEJAs4grdU6k9WGUkVxnpN28KVIytp8s70QT1IohcP2Uc8DZOthhzzeIQR58LW5/H5LdNESd1lDUuBa/hwqQ==",
+  "success": true,
+  "projectFilePath": "/home/steve/projects/private/mms-rs/wrappers/dotnet/MmsSharp.csproj",
+  "expectedPackageFiles": [
+    "/home/steve/.nuget/packages/microsoft.aspnetcore.app.ref/7.0.5/microsoft.aspnetcore.app.ref.7.0.5.nupkg.sha512"
+  ],
+  "logs": []
+}

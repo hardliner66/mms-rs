@@ -2,17 +2,30 @@
 name = "mms-rs"
 description = "A port of the mms-cpp library for the micromouse simulator mms"
 repository = "https://github.com/hardliner66/mms-rs"
-version = "1.0.0"
+version = "2.0.0"
 edition = "2021"
 license-file = "LICENSE"
 readme = "README.md"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
 
 [[example]]
 name = "minimal-bot"
 
 [dependencies]
+cbindgen = "0.24.5"
 thiserror = "1.0.40"
 
+[build-dependencies]
+cbindgen = { version = "0.24.5", optional = true }
+csbindgen = { version = "1.7.3", optional = true }
+
 [features]
-default = ["use_results"]
-use_results = []
+default = ["c_api", "cxx_api"]
+dotnet = ["c_api_internal", "csbindgen"]
+cxx_api = ["cpp_api"]
+cpp_api = ["c_api_internal", "cbindgen"]
+c_api = ["c_api_internal", "cbindgen"]
+c_api_internal = ["use_panics"]
+use_panics = []

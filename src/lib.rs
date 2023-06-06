@@ -1,10 +1,13 @@
 //! Rust Api for mms (micromouse simulator)
 
 use std::{
-    io::{BufRead, StdinLock, StdoutLock, Write},
+    io::{stdin, stdout, BufRead, StdinLock, Write},
     num::{NonZeroU32, ParseFloatError, ParseIntError},
     str::FromStr,
 };
+
+#[cfg(feature = "c_api")]
+mod c_api;
 
 #[derive(thiserror::Error, Debug)]
 pub enum MmsError {
@@ -12,6 +15,8 @@ pub enum MmsError {
     ParseIntError(#[from] ParseIntError),
     #[error("ParseFloatError: {0}")]
     ParseFloatError(#[from] ParseFloatError),
+    #[error("ParseStatQueryError: {0}")]
+    ParseStatQueryError(String),
     #[error("IoError: {0}")]
     IoError(#[from] std::io::Error),
     #[error("InvalidAck: {0}")]
@@ -34,6 +39,26 @@ pub enum StatQuery {
     BestRunEffectiveDistance,
     CurrentRunEffectiveDistance,
     Score,
+}
+
+impl FromStr for StatQuery {
+    type Err = MmsError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "total-distance" => Ok(StatQuery::TotalDistance),
+            "total-turns" => Ok(StatQuery::TotalTurns),
+            "best-run-distance" => Ok(StatQuery::BestRunDistance),
+            "best-run-turns" => Ok(StatQuery::BestRunTurns),
+            "current-run-distance" => Ok(StatQuery::CurrentRunDistance),
+            "current-run-turns" => Ok(StatQuery::CurrentRunTurns),
+            "total-effective-distance" => Ok(StatQuery::TotalEffectiveDistance),
+            "best-run-effective-distance" => Ok(StatQuery::BestRunEffectiveDistance),
+            "current-run-effective-distance" => Ok(StatQuery::CurrentRunEffectiveDistance),
+            "score" => Ok(StatQuery::Score),
+            _ => Err(MmsError::ParseStatQueryError(s.to_string())),
+        }
+    }
 }
 
 impl StatQuery {
@@ -178,18 +203,15 @@ impl CellColor {
 
 /// The main wrapper around the mms api. Holds locks to `stdin` and `stdout` to allow for fast and
 /// exclusive access for the api.
-pub struct MmsApi<'a> {
-    cout: StdoutLock<'a>,
-    cin: StdinLock<'a>,
-}
+pub struct MmsApi;
 
-#[cfg(feature = "use_results")]
+#[cfg(not(feature = "use_panics"))]
 type ResultType<T> = Result<T, MmsError>;
 
-#[cfg(not(feature = "use_results"))]
+#[cfg(feature = "use_panics")]
 type ResultType<T> = T;
 
-#[cfg(feature = "use_results")]
+#[cfg(not(feature = "use_panics"))]
 macro_rules! writeln_and_flush {
     ($dst:expr, $($arg:tt)*) => {
         writeln!($dst, $($arg)*)?;
@@ -197,7 +219,7 @@ macro_rules! writeln_and_flush {
     };
 }
 
-#[cfg(not(feature = "use_results"))]
+#[cfg(feature = "use_panics")]
 macro_rules! writeln_and_flush {
     ($dst:expr, $($arg:tt)*) => {
         writeln!($dst, $($arg)*).unwrap();
@@ -205,26 +227,26 @@ macro_rules! writeln_and_flush {
     };
 }
 
-#[cfg(feature = "use_results")]
+#[cfg(not(feature = "use_panics"))]
 macro_rules! handle_result {
     ($e: expr) => {
         $e?
     };
 }
-#[cfg(not(feature = "use_results"))]
+#[cfg(feature = "use_panics")]
 macro_rules! handle_result {
     ($e: expr) => {
         $e.unwrap()
     };
 }
 
-#[cfg(feature = "use_results")]
+#[cfg(not(feature = "use_panics"))]
 macro_rules! return_result {
     ($e: expr) => {
         return Ok($e);
     };
 }
-#[cfg(not(feature = "use_results"))]
+#[cfg(feature = "use_panics")]
 macro_rules! return_result {
     (()) => {
         ()
@@ -235,18 +257,12 @@ macro_rules! return_result {
 }
 
 macro_rules! ack {
-    ($this: expr) => {
-        return $this.read_ack();
+    ($cin: expr) => {
+        return MmsApi::read_ack(&mut $cin);
     };
 }
 
-impl<'a> MmsApi<'a> {
-    /// Create a new api for mms
-    #[must_use]
-    pub fn new(cin: StdinLock<'a>, cout: StdoutLock<'a>) -> Self {
-        Self { cout, cin }
-    }
-
+impl MmsApi {
     /// Returns the width of the maze
     ///
     /// # Errors
@@ -254,11 +270,14 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn maze_width(&mut self) -> ResultType<i32> {
-        writeln_and_flush!(self.cout, "mazeWidth");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn maze_width() -> ResultType<i32> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "mazeWidth");
         let mut response = String::new();
-        handle_result!(self.cin.read_line(&mut response));
+        handle_result!(cin.read_line(&mut response));
         return_result!(handle_result!(response.trim().parse()));
     }
 
@@ -269,11 +288,14 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn maze_height(&mut self) -> ResultType<i32> {
-        writeln_and_flush!(self.cout, "mazeHeight");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn maze_height() -> ResultType<i32> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "mazeHeight");
         let mut response = String::new();
-        handle_result!(self.cin.read_line(&mut response));
+        handle_result!(cin.read_line(&mut response));
         return_result!(handle_result!(response.trim().parse()));
     }
 
@@ -284,11 +306,14 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn wall_front(&mut self) -> ResultType<bool> {
-        writeln_and_flush!(self.cout, "wallFront");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn wall_front() -> ResultType<bool> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "wallFront");
         let mut response = String::new();
-        handle_result!(self.cin.read_line(&mut response));
+        handle_result!(cin.read_line(&mut response));
         return_result!(response.trim() == "true");
     }
 
@@ -299,11 +324,14 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn wall_right(&mut self) -> ResultType<bool> {
-        writeln_and_flush!(self.cout, "wallRight");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn wall_right() -> ResultType<bool> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "wallRight");
         let mut response = String::new();
-        handle_result!(self.cin.read_line(&mut response));
+        handle_result!(cin.read_line(&mut response));
         return_result!(response.trim() == "true");
     }
 
@@ -314,11 +342,14 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn wall_left(&mut self) -> ResultType<bool> {
-        writeln_and_flush!(self.cout, "wallLeft");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn wall_left() -> ResultType<bool> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "wallLeft");
         let mut response = String::new();
-        handle_result!(self.cin.read_line(&mut response));
+        handle_result!(cin.read_line(&mut response));
         return_result!(response.trim() == "true");
     }
 
@@ -333,14 +364,17 @@ impl<'a> MmsApi<'a> {
     /// `ParseFloatError`
     /// `InvalidAck`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn move_forward(&mut self, distance: Option<NonZeroU32>) -> ResultType<()> {
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn move_forward(distance: Option<NonZeroU32>) -> ResultType<()> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
         writeln_and_flush!(
-            self.cout,
+            cout,
             "moveForward {}",
             distance.map_or_else(String::new, |d| d.to_string())
         );
-        ack!(self);
+        ack!(cin);
     }
 
     /// Turn the robot ninety degrees to the right
@@ -351,10 +385,13 @@ impl<'a> MmsApi<'a> {
     /// `ParseFloatError`
     /// `InvalidAck`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn turn_right(&mut self) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "turnRight");
-        ack!(self);
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn turn_right() -> ResultType<()> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "turnRight");
+        ack!(cin);
     }
 
     /// Turn the robot ninety degrees to the left
@@ -365,10 +402,13 @@ impl<'a> MmsApi<'a> {
     /// `ParseFloatError`
     /// `InvalidAck`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn turn_left(&mut self) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "turnLeft");
-        ack!(self);
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn turn_left() -> ResultType<()> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "turnLeft");
+        ack!(cin);
     }
 
     /// Display a wall at the given position
@@ -383,9 +423,11 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn set_wall(&mut self, x: u32, y: u32, direction: &Direction) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "setWall {x} {y} {}", direction.get_string());
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn set_wall(x: u32, y: u32, direction: &Direction) -> ResultType<()> {
+        let mut cout = stdout().lock();
+        writeln_and_flush!(cout, "setWall {x} {y} {}", direction.get_string());
         return_result!(());
     }
 
@@ -401,9 +443,11 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn clear_wall(&mut self, x: u32, y: u32, direction: &Direction) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "clearWall {x} {y} {}", direction.get_string());
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn clear_wall(x: u32, y: u32, direction: &Direction) -> ResultType<()> {
+        let mut cout = stdout().lock();
+        writeln_and_flush!(cout, "clearWall {x} {y} {}", direction.get_string());
         return_result!(());
     }
 
@@ -419,9 +463,11 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn set_color(&mut self, x: u32, y: u32, color: &CellColor) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "setColor {x} {y} {}", color.get_char());
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn set_color(x: u32, y: u32, color: &CellColor) -> ResultType<()> {
+        let mut cout = stdout().lock();
+        writeln_and_flush!(cout, "setColor {x} {y} {}", color.get_char());
         return_result!(());
     }
 
@@ -436,9 +482,11 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn clear_color(&mut self, x: u32, y: u32) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "clearColor {x} {y}");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn clear_color(x: u32, y: u32) -> ResultType<()> {
+        let mut cout = stdout().lock();
+        writeln_and_flush!(cout, "clearColor {x} {y}");
         return_result!(());
     }
 
@@ -449,9 +497,11 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn clear_all_collor(&mut self) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "clearAllColor");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn clear_all_color() -> ResultType<()> {
+        let mut cout = stdout().lock();
+        writeln_and_flush!(cout, "clearAllColor");
         return_result!(());
     }
 
@@ -467,9 +517,11 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn set_text(&mut self, x: u32, y: u32, text: &str) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "setText {x} {y} {text}");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn set_text(x: u32, y: u32, text: &str) -> ResultType<()> {
+        let mut cout = stdout().lock();
+        writeln_and_flush!(cout, "setText {x} {y} {text}");
         return_result!(());
     }
 
@@ -484,9 +536,11 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn clear_text(&mut self, x: u32, y: u32) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "clearText {x} {y}");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn clear_text(x: u32, y: u32) -> ResultType<()> {
+        let mut cout = stdout().lock();
+        writeln_and_flush!(cout, "clearText {x} {y}");
         return_result!(());
     }
 
@@ -497,9 +551,11 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn clear_all_text(&mut self) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "clearAllText");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn clear_all_text() -> ResultType<()> {
+        let mut cout = stdout().lock();
+        writeln_and_flush!(cout, "clearAllText");
         return_result!(());
     }
 
@@ -510,11 +566,14 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn was_reset(&mut self) -> ResultType<bool> {
-        writeln_and_flush!(self.cout, "wasReset");
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn was_reset() -> ResultType<bool> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "wasReset");
         let mut response = String::new();
-        handle_result!(self.cin.read_line(&mut response));
+        handle_result!(cin.read_line(&mut response));
         return_result!(response.trim() == "true");
     }
 
@@ -526,10 +585,13 @@ impl<'a> MmsApi<'a> {
     /// `ParseFloatError`
     /// `InvalidAck`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn ack_reset(&mut self) -> ResultType<()> {
-        writeln_and_flush!(self.cout, "ackReset");
-        ack!(self);
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn ack_reset() -> ResultType<()> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "ackReset");
+        ack!(cin);
     }
 
     /// The value of the stat, or `-1` if no value exists yet.
@@ -539,11 +601,14 @@ impl<'a> MmsApi<'a> {
     /// `ParseIntError`
     /// `ParseFloatError`
     /// # Panics
-    /// this panics when `use_results` is disabled
-    pub fn get_stat(&mut self, query: &StatQuery) -> ResultType<Stat> {
-        writeln_and_flush!(self.cout, "{}", query.get_string());
+    /// this panics when `use_panics` is disabled
+    #[cfg_attr(feature = "use_panics", must_use)]
+    pub fn get_stat(query: &StatQuery) -> ResultType<Stat> {
+        let mut cout = stdout().lock();
+        let mut cin = stdin().lock();
+        writeln_and_flush!(cout, "{}", query.get_string());
         let mut response = String::new();
-        handle_result!(self.cin.read_line(&mut response));
+        handle_result!(cin.read_line(&mut response));
         let response = response.trim();
         let result = match query {
             StatQuery::TotalDistance => Stat::TotalDistance(handle_result!(response.parse())),
@@ -568,17 +633,17 @@ impl<'a> MmsApi<'a> {
         return_result!(result);
     }
 
-    fn read_ack(&mut self) -> ResultType<()> {
+    fn read_ack(cin: &mut StdinLock) -> ResultType<()> {
         let mut response = String::new();
-        handle_result!(self.cin.read_line(&mut response));
+        handle_result!(cin.read_line(&mut response));
         let ack = response.trim();
-        #[cfg(feature = "use_results")]
+        #[cfg(not(feature = "use_panics"))]
         if ack == "ack" {
             Ok(())
         } else {
             Err(MmsError::InvalidAck(response))
         }
-        #[cfg(not(feature = "use_results"))]
+        #[cfg(feature = "use_panics")]
         assert!(ack == "ack", "{response}");
     }
 }
